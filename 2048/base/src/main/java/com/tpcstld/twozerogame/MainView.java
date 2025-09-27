@@ -4,19 +4,23 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Insets;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowInsets;
 
-import com.google.android.gms.games.Games;
-import com.tpcstld.twozerogame.R;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.content.res.ResourcesCompat;
 
 import java.util.ArrayList;
 
-@SuppressWarnings("deprecation")
 public class MainView extends View {
 
     //Internal Constants
@@ -82,9 +86,9 @@ public class MainView extends View {
         game = new MainGame(context, this);
         try {
             //Getting assets
-            backgroundRectangle = resources.getDrawable(R.drawable.background_rectangle);
-            lightUpRectangle = resources.getDrawable(R.drawable.light_up_rectangle);
-            fadeRectangle = resources.getDrawable(R.drawable.fade_rectangle);
+            backgroundRectangle = ResourcesCompat.getDrawable(resources, R.drawable.background_rectangle, null);
+            lightUpRectangle = ResourcesCompat.getDrawable(resources, R.drawable.light_up_rectangle, null);
+            fadeRectangle = ResourcesCompat.getDrawable(resources, R.drawable.fade_rectangle, null);
             this.setBackgroundColor(resources.getColor(R.color.background));
             Typeface font = Typeface.createFromAsset(resources.getAssets(), "ClearSans-Bold.ttf");
             paint.setTypeface(font);
@@ -143,7 +147,9 @@ public class MainView extends View {
         createOverlays();
     }
 
-    private void drawDrawable(Canvas canvas, Drawable draw, int startingX, int startingY, int endingX, int endingY) {
+    private void drawDrawable(Canvas canvas, @Nullable Drawable draw, int startingX, int startingY, int endingX, int endingY) {
+        if (draw == null) return;
+
         draw.setBounds(startingX, startingY, endingX, endingY);
         draw.draw(canvas);
     }
@@ -155,7 +161,7 @@ public class MainView extends View {
         } else {
             paint.setColor(getResources().getColor(R.color.text_black));
         }
-        canvas.drawText("" + value, cellSize / 2, cellSize / 2 - textShiftY, paint);
+        canvas.drawText("" + value, (float) cellSize / 2, (float) cellSize / 2 - textShiftY, paint);
     }
 
     private void drawScoreText(Canvas canvas) {
@@ -220,7 +226,7 @@ public class MainView extends View {
         }
 
         drawDrawable(canvas,
-                getResources().getDrawable(R.drawable.ic_action_refresh),
+                ResourcesCompat.getDrawable(getResources(), R.drawable.ic_action_refresh, null),
                 sXNewGame + iconPaddingSize,
                 sYIcons + iconPaddingSize,
                 sXNewGame + iconSize - iconPaddingSize,
@@ -238,7 +244,7 @@ public class MainView extends View {
         );
 
         drawDrawable(canvas,
-                getResources().getDrawable(R.drawable.ic_action_undo),
+                ResourcesCompat.getDrawable(getResources(), R.drawable.ic_action_undo, null),
                 sXUndo + iconPaddingSize,
                 sYIcons + iconPaddingSize,
                 sXUndo + iconSize - iconPaddingSize,
@@ -270,7 +276,7 @@ public class MainView extends View {
     //Renders the set of 16 background squares.
     private void drawBackgroundGrid(Canvas canvas) {
         Resources resources = getResources();
-        Drawable backgroundCell = resources.getDrawable(R.drawable.cell_rectangle);
+        Drawable backgroundCell = ResourcesCompat.getDrawable(resources, R.drawable.cell_rectangle, null);
         // Outputting the game grid
         for (int xx = 0; xx < game.numSquaresX; xx++) {
             for (int yy = 0; yy < game.numSquaresY; yy++) {
@@ -319,7 +325,7 @@ public class MainView extends View {
                             float textScaleSize = (float) (percentDone);
                             paint.setTextSize(textSize * textScaleSize);
 
-                            float cellScaleSize = cellSize / 2 * (1 - textScaleSize);
+                            float cellScaleSize = (float) cellSize / 2 * (1 - textScaleSize);
                             bitmapCell[index].setBounds((int) (sX + cellScaleSize), (int) (sY + cellScaleSize), (int) (eX - cellScaleSize), (int) (eY - cellScaleSize));
                             bitmapCell[index].draw(canvas);
                         } else if (aCell.getAnimationType() == MainGame.MERGE_ANIMATION) { // Merging Animation
@@ -328,7 +334,7 @@ public class MainView extends View {
                                     + MERGING_ACCELERATION * percentDone * percentDone / 2);
                             paint.setTextSize(textSize * textScaleSize);
 
-                            float cellScaleSize = cellSize / 2 * (1 - textScaleSize);
+                            float cellScaleSize = (float) cellSize / 2 * (1 - textScaleSize);
                             bitmapCell[index].setBounds((int) (sX + cellScaleSize), (int) (sY + cellScaleSize), (int) (eX - cellScaleSize), (int) (eY - cellScaleSize));
                             bitmapCell[index].draw(canvas);
                         } else if (aCell.getAnimationType() == MainGame.MOVE_ANIMATION) {  // Moving animation
@@ -447,7 +453,7 @@ public class MainView extends View {
             paint.setTextSize(tempTextSize);
             Bitmap bitmap = Bitmap.createBitmap(cellSize, cellSize, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
-            drawDrawable(canvas, resources.getDrawable(cellRectangleIds[xx]), 0, 0, cellSize, cellSize);
+            drawDrawable(canvas, ResourcesCompat.getDrawable(resources, cellRectangleIds[xx], null), 0, 0, cellSize, cellSize);
             drawCellText(canvas, value);
             bitmapCell[xx] = new BitmapDrawable(resources, bitmap);
         }
@@ -568,4 +574,24 @@ public class MainView extends View {
         return (int) ((paint.descent() + paint.ascent()) / 2);
     }
 
+    private void setStatusBarColor(Window window, int color) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) { // Android 15+
+            window.getDecorView().setOnApplyWindowInsetsListener(new OnApplyWindowInsetsListener() {
+                @NonNull
+                @Override
+                public WindowInsets onApplyWindowInsets(@NonNull View view, @NonNull WindowInsets windowInsets) {
+                    Insets statusBarInsets = windowInsets.getInsets(WindowInsets.Type.statusBars());
+                    view.setBackgroundColor(color);
+
+                    // Adjust padding to avoid overlap
+                    view.setPadding(0, statusBarInsets.top, 0, 0);
+                    return windowInsets;
+                }
+            });
+
+        } else {
+            // For Android 14 and below
+            window.setStatusBarColor(color);
+        }
+    }
 }

@@ -3,15 +3,14 @@ plugins {
 }
 
 android {
-    compileSdk 33
+    compileSdk 35
     namespace "com.tpcstld.twozerogame"
 
     defaultConfig {
         applicationId "com.tpcstld.twozerogame"
 
-        // 14 for installed, 21 for instant.
-        minSdkVersion 14
-        targetSdkVersion 33
+        minSdkVersion 21
+        targetSdkVersion 35
 
         versionCode 1011
         versionName "1.5.0"
@@ -25,8 +24,18 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.gms:play-services-auth:20.6.0'
-    implementation 'com.google.android.gms:play-services-drive:17.0.0'
-    implementation 'com.google.android.gms:play-services-games:23.1.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.gms:play-services-auth:21.4.0'
+    implementation 'com.google.android.gms:play-services-games:24.0.0'
+
+    // Resolve Kotlin stdlib conflicts
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.0.21'
+    constraints {
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk7') {
+            because 'kotlin-stdlib supersedes kotlin-stdlib-jdk7'
+        }
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8') {
+            because 'kotlin-stdlib supersedes kotlin-stdlib-jdk8'
+        }
+    }
 }

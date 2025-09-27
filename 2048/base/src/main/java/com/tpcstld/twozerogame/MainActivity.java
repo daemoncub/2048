@@ -1,26 +1,10 @@
 package com.tpcstld.twozerogame;
 
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import android.view.KeyEvent;
-
-import com.google.android.gms.auth.api.Auth;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInResult;
-import com.google.android.gms.drive.Drive;
-import com.google.android.gms.games.Games;
-import com.google.android.gms.games.GamesClient;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.tpcstld.twozerogame.snapshot.SnapshotData;
-import com.tpcstld.twozerogame.snapshot.SnapshotManager;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -125,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         load();
-        signInToGoogle();
     }
 
     private void load() {
@@ -157,75 +140,5 @@ public class MainActivity extends AppCompatActivity {
         view.game.canUndo = settings.getBoolean(CAN_UNDO, view.game.canUndo);
         view.game.gameState = settings.getInt(GAME_STATE, view.game.gameState);
         view.game.lastGameState = settings.getInt(UNDO_GAME_STATE, view.game.lastGameState);
-    }
-
-    /**
-     * Signs into Google. Used for cloud saves.
-     */
-    private void signInToGoogle() {
-        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-        final boolean noLoginPrompt = settings.getBoolean(NO_LOGIN_PROMPT, false);
-        GoogleSignInOptions signInOptions =
-                new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN)
-                        .requestScopes(Drive.SCOPE_APPFOLDER)
-                        .build();
-        final GoogleSignInClient signInClient = GoogleSignIn.getClient(this, signInOptions);
-        signInClient.silentSignIn().addOnCompleteListener(this, new OnCompleteListener<GoogleSignInAccount>() {
-            @Override
-            public void onComplete(@NonNull Task<GoogleSignInAccount> task) {
-                if (!task.isSuccessful()) {
-                    if (!firstLoginAttempt && !noLoginPrompt) {
-                        firstLoginAttempt = true;
-                        startActivityForResult(signInClient.getSignInIntent(), RC_SIGN_IN);
-                    }
-                } else {
-                    System.out.println("Successfully logged into Google.");
-
-                    if (task.getResult() != null) {
-                        GamesClient client = Games.getGamesClient(MainActivity.this, task.getResult());
-                        client.setViewForPopups(view);
-                    }
-
-                    SnapshotManager.loadSnapshot(MainActivity.this, new SnapshotManager.Callback() {
-                        @Override
-                        public void run(@NonNull SnapshotData data) {
-                            view.game.handleSnapshot(data);
-                        }
-                    });
-                }
-            }
-        });
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != RC_SIGN_IN) {
-            return;
-        }
-
-        GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-        if (result == null) {
-            return;
-        }
-
-        if (!result.isSuccess()) {
-            SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-            SharedPreferences.Editor editor = settings.edit();
-            editor.putBoolean(NO_LOGIN_PROMPT, true);
-            editor.apply();
-            System.out.println(result.getStatus());
-        } else {
-            if (result.getSignInAccount() != null) {
-                GamesClient client = Games.getGamesClient(MainActivity.this, result.getSignInAccount());
-                client.setViewForPopups(view);
-            }
-            SnapshotManager.loadSnapshot(MainActivity.this, new SnapshotManager.Callback() {
-                @Override
-                public void run(@NonNull SnapshotData data) {
-                    view.game.handleSnapshot(data);
-                }
-            });
-        }
     }
 }
