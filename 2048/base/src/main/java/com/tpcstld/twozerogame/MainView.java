@@ -573,25 +573,4 @@ public class MainView extends View {
     private int centerText() {
         return (int) ((paint.descent() + paint.ascent()) / 2);
     }
-
-    private void setStatusBarColor(Window window, int color) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) { // Android 15+
-            window.getDecorView().setOnApplyWindowInsetsListener(new OnApplyWindowInsetsListener() {
-                @NonNull
-                @Override
-                public WindowInsets onApplyWindowInsets(@NonNull View view, @NonNull WindowInsets windowInsets) {
-                    Insets statusBarInsets = windowInsets.getInsets(WindowInsets.Type.statusBars());
-                    view.setBackgroundColor(color);
-
-                    // Adjust padding to avoid overlap
-                    view.setPadding(0, statusBarInsets.top, 0, 0);
-                    return windowInsets;
-                }
-            });
-
-        } else {
-            // For Android 14 and below
-            window.setStatusBarColor(color);
-        }
-    }
 }

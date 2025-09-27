@@ -1,10 +1,17 @@
 package com.tpcstld.twozerogame;
 
 import android.content.SharedPreferences;
+import android.graphics.Insets;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import android.view.KeyEvent;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowInsets;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -40,6 +47,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         setContentView(view);
+
+        // Set status bar color
+        setStatusBarColor(getWindow(), getResources().getColor(R.color.status_background));
     }
 
     @Override
@@ -140,5 +150,26 @@ public class MainActivity extends AppCompatActivity {
         view.game.canUndo = settings.getBoolean(CAN_UNDO, view.game.canUndo);
         view.game.gameState = settings.getInt(GAME_STATE, view.game.gameState);
         view.game.lastGameState = settings.getInt(UNDO_GAME_STATE, view.game.lastGameState);
+    }
+
+    private void setStatusBarColor(Window window, int color) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) { // Android 15+
+            window.getDecorView().setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                @NonNull
+                @Override
+                public WindowInsets onApplyWindowInsets(@NonNull View view, @NonNull WindowInsets windowInsets) {
+                    Insets statusBarInsets = windowInsets.getInsets(WindowInsets.Type.statusBars());
+                    view.setBackgroundColor(color);
+
+                    // Adjust padding to avoid overlap
+                    view.setPadding(0, statusBarInsets.top, 0, 0);
+                    return windowInsets;
+                }
+            });
+
+        } else {
+            // For Android 14 and below
+            window.setStatusBarColor(color);
+        }
     }
 }
