@@ -1,0 +1,315 @@
+diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/MainActivity.java b/2048/base/src/main/java/com/tpcstld/twozerogame/MainActivity.java
+index b5e0f8b..1234567 100644
+--- a/2048/base/src/main/java/com/tpcstld/twozerogame/MainActivity.java
++++ b/2048/base/src/main/java/com/tpcstld/twozerogame/MainActivity.java
+@@ ... @@
++import java.io.ByteArrayInputStream;
++import java.io.ByteArrayOutputStream;
++import java.io.ObjectInputStream;
++import java.io.ObjectOutputStream;
++import android.util.Base64;
+@@ ... @@
+-    private static final String CAN_UNDO = "can undo";
+     private static final String UNDO_GRID = "undo";
+     private static final String GAME_STATE = "game state";
+     private static final String UNDO_GAME_STATE = "undo game state";
++
++    private static final String UNDO_STACKS = "undo_stacks";
+@@ ... @@
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         view = new MainView(this);
+         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+         view.hasSaveState = settings.getBoolean("save_state", false);
+         if (savedInstanceState != null) {
+             if (savedInstanceState.getBoolean("hasState")) {
+                 load();
+             }
+         }
+         setContentView(view);
+         // Set status bar color
+         setStatusBarColor(getWindow(), getResources().getColor(R.color.status_background));
++        // Load undo stacks from persistent storage
++        loadUndoStacks(this, view.game);
+     }
+@@ ... @@
+     protected void onPause() {
+         super.onPause();
+         save();
++        // Save undo stacks to persistent storage
++        saveUndoStacks(this, view.game);
+     }
+@@ ... @@
+     private void save() {
+         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+         SharedPreferences.Editor editor = settings.edit();
+         Tile[][] field = view.game.grid.field;
+         Tile[][] undoField = view.game.grid.undoField;
+         editor.putInt(WIDTH, field.length);
+         editor.putInt(HEIGHT, field.length);
+         for (int xx = 0; xx < field.length; xx++) {
+             for (int yy = 0; yy < field[0].length; yy++) {
+                 if (field[xx][yy] != null) {
+                     editor.putInt(xx + " " + yy, field[xx][yy].getValue());
+                 } else {
+                     editor.putInt(xx + " " + yy, 0);
+                 }
+                 if (undoField[xx][yy] != null) {
+                     editor.putInt(UNDO_GRID + xx + " " + yy, undoField[xx][yy].getValue());
+                 } else {
+                     editor.putInt(UNDO_GRID + xx + " " + yy, 0);
+                 }
+             }
+         }
+         editor.putLong(SCORE, view.game.score);
+         editor.putLong(HIGH_SCORE, view.game.highScore);
+         editor.putLong(UNDO_SCORE, view.game.lastScore);
+-        editor.putBoolean(CAN_UNDO, view.game.canUndo);
+         editor.putInt(GAME_STATE, view.game.gameState);
+         editor.putInt(UNDO_GAME_STATE, view.game.lastGameState);
+         editor.apply();
+     }
+@@ ... @@
+     private void load() {
+         //Stopping all animations
+         view.game.aGrid.cancelAnimations();
+         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+         for (int xx = 0; xx < view.game.grid.field.length; xx++) {
+             for (int yy = 0; yy < view.game.grid.field[0].length; yy++) {
+                 int value = settings.getInt(xx + " " + yy, -1);
+                 if (value > 0) {
+                     view.game.grid.field[xx][yy] = new Tile(xx, yy, value);
+                 } else if (value == 0) {
+                     view.game.grid.field[xx][yy] = null;
+                 }
+                 int undoValue = settings.getInt(UNDO_GRID + xx + " " + yy, -1);
+                 if (undoValue > 0) {
+                     view.game.grid.undoField[xx][yy] = new Tile(xx, yy, undoValue);
+                 } else if (value == 0) {
+                     view.game.grid.undoField[xx][yy] = null;
+                 }
+             }
+         }
+         view.game.score = settings.getLong(SCORE, view.game.score);
+         view.game.highScore = settings.getLong(HIGH_SCORE, view.game.highScore);
+         view.game.lastScore = settings.getLong(UNDO_SCORE, view.game.lastScore);
+-        view.game.canUndo = settings.getBoolean(CAN_UNDO, view.game.canUndo);
+         view.game.gameState = settings.getInt(GAME_STATE, view.game.gameState);
+         view.game.lastGameState = settings.getInt(UNDO_GAME_STATE, view.game.lastGameState);
+     }
+@@ ... @@
++    // -------- Undo Stacks persistence --------------
++    @SuppressWarnings("unchecked")
++    private void loadUndoStacks(android.content.Context context, MainGame game) {
++        try {
++            SharedPreferences prefs = context.getSharedPreferences("undo_stack", MODE_PRIVATE);
++            String encoded = prefs.getString(UNDO_STACKS, null);
++            if (encoded != null && !encoded.isEmpty()) {
++                byte[] data = Base64.decode(encoded, Base64.DEFAULT);
++                ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(data));
++                game.undoGridStack = (java.util.Stack<com.tpcstld.twozerogame.Grid>) ois.readObject();
++                game.undoScoreStack = (java.util.Stack<Long>) ois.readObject();
++                game.undoGameStateStack = (java.util.Stack<Integer>) ois.readObject();
++                ois.close();
++            }
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    private void saveUndoStacks(android.content.Context context, MainGame game) {
++        try {
++            SharedPreferences prefs = context.getSharedPreferences("undo_stack", MODE_PRIVATE);
++            SharedPreferences.Editor editor = prefs.edit();
++            ByteArrayOutputStream baos = new ByteArrayOutputStream();
++            ObjectOutputStream oos = new ObjectOutputStream(baos);
++            oos.writeObject(game.undoGridStack);
++            oos.writeObject(game.undoScoreStack);
++            oos.writeObject(game.undoGameStateStack);
++            oos.close();
++            byte[] data = baos.toByteArray();
++            String encoded = Base64.encodeToString(data, Base64.DEFAULT);
++            editor.putString(UNDO_STACKS, encoded);
++            editor.apply();
++            baos.close();
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++    }
+diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/MainGame.java b/2048/base/src/main/java/com/tpcstld/twozerogame/MainGame.java
+index 9a2513e..7654321 100644
+--- a/2048/base/src/main/java/com/tpcstld/twozerogame/MainGame.java
++++ b/2048/base/src/main/java/com/tpcstld/twozerogame/MainGame.java
+@@ ... @@
++import java.io.Serializable;
++import java.util.Stack;
+@@ ... @@
+-public class MainGame {
++public class MainGame implements Serializable {
+@@ ... @@
+-    boolean canUndo;
++    // Undo stacks for unlimited undo
++    public Stack<Grid> undoGridStack = new Stack<>();
++    public Stack<Long> undoScoreStack = new Stack<>();
++    public Stack<Integer> undoGameStateStack = new Stack<>();
+@@ ... @@
+-    void newGame() {
+-        if (grid == null) {
+-            grid = new Grid(numSquaresX, numSquaresY);
+-        } else {
+-            prepareUndoState();
+-            saveUndoState();
+-            grid.clearGrid();
+-        }
+-        aGrid = new AnimationGrid(numSquaresX, numSquaresY);
+-        highScore = getHighScore();
+-        if (score >= highScore) {
+-            highScore = score;
+-            recordHighScore();
+-        }
+-        score = DebugTools.getStartingScore();
+-        gameState = GAME_NORMAL;
+-        addStartTiles();
+-        mView.showHelp = firstRun();
+-        mView.refreshLastTime = true;
+-        mView.resyncTime();
+-        mView.invalidate();
+-    }
++    void newGame() {
++        if (grid == null) {
++            grid = new Grid(numSquaresX, numSquaresY);
++        } else {
++            prepareUndoState();
++            saveUndoState();
++            grid.clearGrid();
++        }
++        aGrid = new AnimationGrid(numSquaresX, numSquaresY);
++        highScore = getHighScore();
++        if (score >= highScore) {
++            highScore = score;
++            recordHighScore();
++        }
++        score = DebugTools.getStartingScore();
++        gameState = GAME_NORMAL;
++        addStartTiles();
++        mView.showHelp = firstRun();
++        mView.refreshLastTime = true;
++        mView.resyncTime();
++        mView.invalidate();
++        // Clear undo stacks at the start of new game
++        undoGridStack.clear();
++        undoScoreStack.clear();
++        undoGameStateStack.clear();
++    }
+@@ ... @@
+-    private void saveUndoState() {
+-        grid.saveTiles();
+-        canUndo = true;
+-        lastScore = bufferScore;
+-        lastGameState = bufferGameState;
+-    }
+-
+-    private void prepareUndoState() {
+-        grid.prepareSaveTiles();
+-        bufferScore = score;
+-        bufferGameState = gameState;
+-    }
+-
+-    void revertUndoState() {
+-        if (canUndo) {
+-            canUndo = false;
+-            aGrid.cancelAnimations();
+-            grid.revertTiles();
+-            score = lastScore;
+-            gameState = lastGameState;
+-            mView.refreshLastTime = true;
+-            mView.invalidate();
+-        }
+-    }
++    // Prepare the undo state and push to stacks
++    private static final int MAX_UNDO = 100; // Stack memory cap
++    private void prepareUndoState() {
++        // Push deep copies to stacks for persistence
++        if (undoGridStack.size() >= MAX_UNDO) {
++            undoGridStack.remove(0);
++            undoScoreStack.remove(0);
++            undoGameStateStack.remove(0);
++        }
++        if (grid != null) {
++            undoGridStack.push(grid.deepCopy());
++        } else {
++            undoGridStack.push(null);
++        }
++        undoScoreStack.push(score);
++        undoGameStateStack.push(gameState);
++    }
++
++    // Save method can be kept for old single undo; you may remove if redundant
++    private void saveUndoState() {
++        grid.saveTiles(); // Default mechanism (optional with stacks)
++        lastScore = bufferScore;
++        lastGameState = bufferGameState;
++    }
++
++    // Unlimited undos!
++    void revertUndoState() {
++        if (!undoGridStack.isEmpty() && !undoScoreStack.isEmpty() && !undoGameStateStack.isEmpty()) {
++            grid = undoGridStack.pop();
++            score = undoScoreStack.pop();
++            gameState = undoGameStateStack.pop();
++            aGrid.cancelAnimations();
++            mView.refreshLastTime = true;
++            mView.invalidate();
++        }
++    }
+diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/Grid.java b/2048/base/src/main/java/com/tpcstld/twozerogame/Grid.java
+index dd44ed5..b6b6b6b 100644
+--- a/2048/base/src/main/java/com/tpcstld/twozerogame/Grid.java
++++ b/2048/base/src/main/java/com/tpcstld/twozerogame/Grid.java
+@@ ... @@
+-public class Grid {
++import java.io.Serializable;
++
++public class Grid implements Serializable {
+@@ ... @@
++    // Deep copy for undo stack
++    public Grid deepCopy() {
++        Grid copy = new Grid(field.length, field[0].length);
++        for (int xx = 0; xx < field.length; xx++) {
++            for (int yy = 0; yy < field[0].length; yy++) {
++                if (field[xx][yy] != null) {
++                    copy.field[xx][yy] = field[xx][yy].deepCopy();
++                } else {
++                    copy.field[xx][yy] = null;
++                }
++                if (undoField[xx][yy] != null) {
++                    copy.undoField[xx][yy] = undoField[xx][yy].deepCopy();
++                } else {
++                    copy.undoField[xx][yy] = null;
++                }
++            }
++        }
++        // bufferField is not relevant for undo
++        return copy;
++    }
+diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/Tile.java b/2048/base/src/main/java/com/tpcstld/twozerogame/Tile.java
+index 58c0683..b7b7b7b 100644
+--- a/2048/base/src/main/java/com/tpcstld/twozerogame/Tile.java
++++ b/2048/base/src/main/java/com/tpcstld/twozerogame/Tile.java
+@@ ... @@
+-public class Tile extends Cell {
++import java.io.Serializable;
++
++public class Tile extends Cell implements Serializable {
+@@ ... @@
++    public Tile deepCopy() {
++        Tile t = new Tile(getX(), getY(), value);
++        if (mergedFrom != null) {
++            t.mergedFrom = new Tile[mergedFrom.length];
++            for (int i = 0; i < mergedFrom.length; i++) {
++                t.mergedFrom[i] = (mergedFrom[i] != null) ? mergedFrom[i].deepCopy() : null;
++            }
++        }
++        return t;
++    }
