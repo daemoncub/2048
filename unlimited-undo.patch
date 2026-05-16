@@ -2,7 +2,7 @@ diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/MainActivity.java b
 index b5e0f8b..1234567 100644
 --- a/2048/base/src/main/java/com/tpcstld/twozerogame/MainActivity.java
 +++ b/2048/base/src/main/java/com/tpcstld/twozerogame/MainActivity.java
-@@ -1,6 +1,10 @@
+@@ -1,15 +1,19 @@
  package com.tpcstld.twozerogame;
  
  import android.content.SharedPreferences;
@@ -14,7 +14,15 @@ index b5e0f8b..1234567 100644
  import android.graphics.Insets;
  import android.os.Build;
  import android.os.Bundle;
-@@ -23,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
+ import android.preference.PreferenceManager;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.appcompat.app.AppCompatActivity;
+ import android.view.KeyEvent;
+@@ -21,7 +25,8 @@ public class MainActivity extends AppCompatActivity {
+     private static final String HEIGHT = "height";
+     private static final String SCORE = "score";
+     private static final String HIGH_SCORE = "high score temp";
      private static final String UNDO_SCORE = "undo score";
 -    private static final String CAN_UNDO = "can undo";
      private static final String UNDO_GRID = "undo";
@@ -109,7 +117,7 @@ diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/MainGame.java b/204
 index 9a2513e..7654321 100644
 --- a/2048/base/src/main/java/com/tpcstld/twozerogame/MainGame.java
 +++ b/2048/base/src/main/java/com/tpcstld/twozerogame/MainGame.java
-@@ -1,6 +1,8 @@
+@@ -1,5 +1,7 @@
  package com.tpcstld.twozerogame;
  
  import android.content.Context;
@@ -128,7 +136,7 @@ index 9a2513e..7654321 100644
  
      static final int SPAWN_ANIMATION = -1;
      static final int MOVE_ANIMATION = 0;
-@@ -44,10 +46,13 @@ public class MainGame {
+@@ -44,7 +46,10 @@ public class MainGame {
      private final MainView mView;
      Grid grid = null;
      AnimationGrid aGrid;
@@ -140,8 +148,6 @@ index 9a2513e..7654321 100644
      public long score = 0;
      long highScore = 0;
      long lastScore = 0;
-     private long bufferScore = 0;
- 
 @@ -75,6 +80,10 @@ public class MainGame {
          addStartTiles();
          mView.showHelp = firstRun();
@@ -155,12 +161,11 @@ index 9a2513e..7654321 100644
      }
  
      private void addStartTiles() {
-@@ -164,6 +173,7 @@ public class MainGame {
+@@ -163,6 +172,7 @@ public class MainGame {
          tile.updatePosition(cell);
      }
  
-+    // Prepare the undo state and push to stacks
-+    private static final int MAX_UNDO = 100; // Stack memory cap
++    private static final int MAX_UNDO = 100;
      private void saveUndoState() {
          grid.saveTiles();
 -        canUndo = true;
@@ -170,7 +175,6 @@ index 9a2513e..7654321 100644
  
      private void prepareUndoState() {
 -        grid.prepareSaveTiles();
-+        // Push deep copies to stacks for persistence
 +        if (undoGridStack.size() >= MAX_UNDO) {
 +            undoGridStack.remove(0);
 +            undoScoreStack.remove(0);
@@ -188,7 +192,6 @@ index 9a2513e..7654321 100644
          bufferGameState = gameState;
      }
  
-+    // Unlimited undos!
      void revertUndoState() {
 -        if (canUndo) {
 -            canUndo = false;
@@ -207,7 +210,7 @@ diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/Grid.java b/2048/ba
 index dd44ed5..b6b6b6b 100644
 --- a/2048/base/src/main/java/com/tpcstld/twozerogame/Grid.java
 +++ b/2048/base/src/main/java/com/tpcstld/twozerogame/Grid.java
-@@ -1,7 +1,8 @@
+@@ -1,6 +1,7 @@
  package com.tpcstld.twozerogame;
  
  import java.util.ArrayList;
@@ -223,7 +226,6 @@ index dd44ed5..b6b6b6b 100644
          }
      }
 +
-+    // Deep copy for undo stack
 +    public Grid deepCopy() {
 +        Grid copy = new Grid(field.length, field[0].length);
 +        for (int xx = 0; xx < field.length; xx++) {
@@ -240,7 +242,6 @@ index dd44ed5..b6b6b6b 100644
 +                }
 +            }
 +        }
-+        // bufferField is not relevant for undo
 +        return copy;
 +    }
  }
@@ -248,17 +249,16 @@ diff --git a/2048/base/src/main/java/com/tpcstld/twozerogame/Tile.java b/2048/ba
 index 58c0683..b7b7b7b 100644
 --- a/2048/base/src/main/java/com/tpcstld/twozerogame/Tile.java
 +++ b/2048/base/src/main/java/com/tpcstld/twozerogame/Tile.java
-@@ -1,5 +1,7 @@
+@@ -1,5 +1,6 @@
  package com.tpcstld.twozerogame;
  
--public class Tile extends Cell {
 +import java.io.Serializable;
-+
+-public class Tile extends Cell {
 +public class Tile extends Cell implements Serializable {
      private final int value;
      private Tile[] mergedFrom = null;
  
-@@ -31,4 +33,17 @@ public class Tile extends Cell {
+@@ -31,4 +32,17 @@ public class Tile extends Cell {
      public void setMergedFrom(Tile[] tile) {
          mergedFrom = tile;
      }
