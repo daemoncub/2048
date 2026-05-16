@@ -1,0 +1,28 @@
+name: Apply Unlimited Undo Patch
+
+on:
+  workflow_dispatch:  # Manually trigger from GitHub web UI
+
+jobs:
+  apply-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up committer info
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply unlimited undo patch
+        run: |
+          git apply .github/patches/unlimited-undo.patch
+
+      - name: Commit and push changes
+        run: |
+          git add .
+          git commit -m "Apply unlimited undo support patch via workflow" || echo "No changes to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
