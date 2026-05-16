@@ -17,7 +17,7 @@ jobs:
 
       - name: Apply unlimited undo patch
         run: |
-          git apply .github/patches/unlimited-undo.patch
+          git apply unlimited_undo.patch
 
       - name: Commit and push changes
         run: |
