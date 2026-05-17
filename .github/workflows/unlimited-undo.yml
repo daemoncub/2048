@@ -3,6 +3,9 @@ name: Apply Unlimited Undo Patch
 on:
   workflow_dispatch: # Manual trigger from GitHub UI
 
+permissions:
+  contents: write
+
 jobs:
   apply-patch:
     runs-on: ubuntu-latest
